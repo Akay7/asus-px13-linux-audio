@@ -1,0 +1,10 @@
+# tas2783-patched/ only tracks the Makefile and the patch; the source is fetched
+# and the module built per kernel by build-px13-tas2783-module.sh
+tas2783-patched/*
+!tas2783-patched/Makefile
+!tas2783-patched/*.patch
+
+# never commit MOK signing keys
+*.key
+*.der
+*.priv
