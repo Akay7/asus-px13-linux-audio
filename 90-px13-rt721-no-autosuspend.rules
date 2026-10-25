@@ -1,0 +1,5 @@
+# Keep the RT721 jack codec (SoundWire 025d:0721) out of runtime suspend.
+# On 7.3 it fails to resume (regcache_sync -> -ENODATA), so its PCMs can't be opened
+# and WirePlumber drops the whole HiFi profile, speakers included.
+# Install as /etc/udev/rules.d/90-px13-rt721-no-autosuspend.rules
+ACTION=="add", SUBSYSTEM=="soundwire", KERNEL=="sdw:*:025d:0721:*", ATTR{power/control}="on"

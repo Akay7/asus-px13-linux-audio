@@ -13,6 +13,7 @@ With a current kernel the card (`amdsoundwire`) is created, but two things stay 
 |---|---|---|
 | No speaker/headphone sinks, only HDMI | `alsa-ucm-conf` 1.2.16.1 has no `sof-soundwire/tas2783.conf`, so WirePlumber keeps the card profile "off" | `tas2783.conf` |
 | Only one speaker works, plays mono | `tas2783-sdw` gives both amps the full channel mask, so neither gets its own channel | patch in `tas2783-patched/` |
+| Kernel 7.3: no speaker sink again, card profiles are only "off" / "pro-audio" | the RT721 jack codec runtime-suspends and fails to resume (`regcache_sync` gets `-ENODATA`); its PCMs fail to open, so PipeWire drops the whole HiFi profile, speakers included | `90-px13-rt721-no-autosuspend.rules` |
 
 The module fix is the upstream patch
 ["ASoC: tas2783-sdw: split a stereo stream across the two mono amps"](https://ratatoskr.run/lkml/2026/08/17416566/t),
@@ -71,6 +72,21 @@ sudo reboot
 speaker-test -D hw:CARD=amdsoundwire,DEV=2 -c 2 -t sine -f 500 -s 1 -l 1   # left speaker only
 speaker-test -D hw:CARD=amdsoundwire,DEV=2 -c 2 -t sine -f 500 -s 2 -l 1   # right speaker only
 ```
+
+### 5. Kernel 7.3: keep the RT721 awake
+
+On 7.3, `aplay -D hw:1,0 ...` fails with `audio open error: No data available`, and
+`/sys/bus/soundwire/devices/sdw:0:1:025d:0721:01/power/runtime_status` shows `suspended`.
+7.3 started returning `regcache_sync()` errors from `rt721_sdca_dev_resume()` (7.2 ignored them), so
+the codec never comes back from its first runtime suspend. Until that is fixed upstream, forbid
+runtime PM for it:
+
+```bash
+./install-px13-rt721-rule.sh
+sudo reboot
+```
+
+The cost is that the jack codec stays powered.
 
 ## After a kernel update (until 7.3)
 
@@ -141,3 +157,5 @@ Kernel 7.3 contains the fix, so the patched module is no longer needed.
 | `tas2783-patched/Makefile` | kbuild file for the out-of-tree module |
 | `build-px13-tas2783-module.sh` | fetches the driver source for your kernel, patches, builds, signs |
 | `install-px13-tas2783-module.sh` | installs the module into `updates/` |
+| `90-px13-rt721-no-autosuspend.rules` | udev rule that keeps the RT721 out of runtime suspend (7.3) |
+| `install-px13-rt721-rule.sh` | installs that rule |
