@@ -1,10 +1,19 @@
-# tas2783-patched/ only tracks the Makefile and the patch; the source is fetched
-# and the module built per kernel by build-px13-tas2783-module.sh
+# tas2783-patched/ and rt721-patched/ only track the Makefile and the patch; the source is fetched
+# and the module built per kernel by the build-px13-*-module.sh scripts
 tas2783-patched/*
 !tas2783-patched/Makefile
 !tas2783-patched/*.patch
+rt721-patched/*
+!rt721-patched/Makefile
+!rt721-patched/*.patch
 
 # never commit MOK signing keys
 *.key
 *.der
 *.priv
+
+# output of trace-px13-rt721-resume.sh
+rt721-trace.txt
+
+# sent emails live on lore.kernel.org, not in this repo
+upstream/

@@ -1,0 +1,34 @@
+--- rt721-sdca-sdw.h.orig	2026-10-25 17:14:57.827799774 +0700
++++ rt721-sdca-sdw.h	2026-10-25 17:14:57.840969377 +0700
+@@ -63,8 +63,11 @@
+ 		RT721_SDCA_CTL_FU_MUTE, CH_L), 0x01 },
+ 	{ SDW_SDCA_CTL(FUNC_NUM_AMP, RT721_SDCA_ENT_USER_FU06,
+ 		RT721_SDCA_CTL_FU_MUTE, CH_R), 0x01 },
+-	{ SDW_SDCA_CTL(FUNC_NUM_AMP, RT721_SDCA_ENT_PDE23,
+-		RT721_SDCA_CTL_REQ_POWER_STATE, 0), 0x03 },
++	/*
++	 * No default for PDE23 REQ_POWER_STATE: the driver never writes it,
++	 * and on the ASUS ProArt PX13 the codec answers Command_Ignored when
++	 * regcache_sync() replays it, which fails runtime resume.
++	 */
+ 	{ SDW_SDCA_CTL(FUNC_NUM_AMP, RT721_SDCA_ENT_PDE23,
+ 		RT721_SDCA_CTL_FU_MUTE, CH_01), 0x01 },
+ 	{ SDW_SDCA_CTL(FUNC_NUM_AMP, RT721_SDCA_ENT_PDE23,
+@@ -86,12 +89,15 @@
+ 	{ 0x2000003, 0x0000 },
+ 	{ 0x2000013, 0x8001 },
+ 	{ 0x200003c, 0x0000 },
+-	{ 0x2000046, 0x3400 },
++	/*
++	 * No defaults for 0x2000046 and 0x6100006: both are volatile, so the
++	 * cache never tracks them and regcache_sync() would only write these
++	 * stale values back. The codec answers Command_Ignored to 0x2000046.
++	 */
+ 	{ 0x5f00044, 0x6040 },
+ 	{ 0x5f00045, 0x3333 },
+ 	{ 0x5f00048, 0x0000 },
+ 	{ 0x6100005, 0x0005 },
+-	{ 0x6100006, 0x0000 },
+ 	{ 0x610000d, 0x0051 },
+ 	{ 0x6100010, 0x0180 },
+ 	{ 0x6100011, 0x0000 },

@@ -10,6 +10,7 @@ set -euo pipefail
 
 KVER=${KVER:-$(uname -r)}
 KTAG="v${KVER%%-*}"               # 7.2.12-1-default -> v7.2.12
+KTAG=${KTAG%.0}                   # kernel.org tags x.y.0 as vx.y
 KDIR=/lib/modules/$KVER/build
 MOK_DIR=${MOK_DIR:-$HOME/.mok}
 DIR="$(dirname "$(readlink -f "$0")")/tas2783-patched"
