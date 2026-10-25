@@ -1,24 +1,20 @@
 # Internal audio on ASUS ProArt PX13 (HN7306EAC) — openSUSE Tumbleweed
 
-Tested on kernel **7.3.0-1-default** (and earlier 7.2.11-1-default), Secure Boot **on**,
-PipeWire/WirePlumber. The scripts use generic paths (`/lib/modules/$(uname -r)/build`), so other
-distros should work too as long as the kernel headers/devel package is installed.
+Tested on kernel **7.3.0-1-default**, Secure Boot **on**, PipeWire/WirePlumber. The scripts use
+generic paths (`/lib/modules/$(uname -r)/build`), so other distros should work too as long as the
+kernel headers/devel package is installed.
+
+For kernel 7.2 use the [`kernel-7.2`](https://github.com/Akay7/asus-px13-linux-audio/tree/kernel-7.2) tag.
 
 ## What was wrong
 
 Speakers are two TI TAS2783 amps on SoundWire, the jack/mic is a Realtek RT721.
 With a current kernel the card (`amdsoundwire`) is created, but these things are broken:
 
-| Symptom | Kernels | Cause | Fix in this repo |
-|---|---|---|---|
-| No speaker/headphone sinks, only HDMI | all | `alsa-ucm-conf` 1.2.16.1 has no `sof-soundwire/tas2783.conf`, so WirePlumber keeps the card profile "off" | `tas2783.conf` |
-| Only one speaker works, plays mono | 7.2 | `tas2783-sdw` gives both amps the full channel mask, so neither gets its own channel | patch in `tas2783-patched/` (in-tree since 7.3) |
-| No speaker sink again, card profiles are only "off" / "pro-audio" | 7.3 | the RT721 fails to resume from runtime suspend: `regcache_sync()` writes back register defaults the codec rejects (`-ENODATA`), and since 7.3 that error fails the resume. Its PCMs then fail to open, so PipeWire drops the whole HiFi profile, speakers included | patch in `rt721-patched/` (or the udev rule as a fallback) |
-
-The tas2783 fix is the upstream patch
-["ASoC: tas2783-sdw: split a stereo stream across the two mono amps"](https://ratatoskr.run/lkml/2026/08/17416566/t),
-commit [`173cb3147ba2`](https://git.kernel.org/pub/scm/linux/kernel/git/broonie/sound.git/commit/?id=173cb3147ba2),
-which is in v7.3.
+| Symptom | Cause | Fix in this repo |
+|---|---|---|
+| No speaker/headphone sinks, only HDMI | `alsa-ucm-conf` 1.2.16.1 has no `sof-soundwire/tas2783.conf`, so WirePlumber keeps the card profile "off" | `tas2783.conf` |
+| No speaker sink even with the UCM file, card profiles are only "off" / "pro-audio" | the RT721 fails to resume from runtime suspend: `regcache_sync()` writes back register defaults the codec rejects (`-ENODATA`), and since 7.3 that error fails the resume. Its PCMs then fail to open, so PipeWire drops the whole HiFi profile, speakers included | patch in `rt721-patched/` (or the udev rule as a fallback) |
 
 The RT721 fix drops three entries from the driver's register defaults: PDE23 REQ_POWER_STATE
 (`0x41001188`, which the driver never writes and the codec ignores on this laptop) and the volatile
@@ -55,10 +51,10 @@ sudo mokutil --import mok-tas2783.der   # set a one-time password
 sudo reboot                             # blue MOK screen: Enroll MOK -> enter password
 ```
 
-The build scripts look for the key pair in `~/.mok`; set `MOK_DIR=/other/dir` to use another location.
+The build script looks for the key pair in `~/.mok`; set `MOK_DIR=/other/dir` to use another location.
 Keep the `.key` file private and out of this repo (`.gitignore` excludes `*.key` / `*.der`).
 
-### 3. Kernel 7.3: patched RT721 module
+### 3. Patched RT721 module
 
 Needs `kernel-default-devel` (matching your running kernel) and `curl`.
 
@@ -83,17 +79,7 @@ Fallback if you can't build modules: forbid runtime PM for the RT721 instead
 SoundWire link stays up for the amps anyway, so the cost looks small. Don't use both: the rule
 hides whether the module works.
 
-### 4. Kernel 7.2 only: patched tas2783 module
-
-7.3 has this fix in-tree; skip this step there.
-
-```bash
-./build-px13-tas2783-module.sh      # fetches tas2783-sdw.c for your kernel, patches, builds, signs
-./install-px13-tas2783-module.sh    # copies it to /lib/modules/$(uname -r)/updates/
-sudo reboot
-```
-
-### 5. Check it works
+### 4. Check it works
 
 ```bash
 speaker-test -D hw:CARD=amdsoundwire,DEV=2 -c 2 -t sine -f 500 -s 1 -l 1   # left speaker only
@@ -121,8 +107,6 @@ there (boot without the override and run `sudo ./trace-px13-rt721-resume.sh`) be
   ```bash
   sudo rm -f /lib/modules/*/updates/snd-soc-rt721-sdca.ko && sudo depmod -a && sudo reboot
   ```
-
-- **tas2783 module (7.2 leftovers):** `sudo rm -f /lib/modules/*/updates/snd-soc-tas2783-sdw.ko && sudo depmod -a`.
 
 - **UCM file:** upstream alsa-ucm-conf added its own `ucm2/sof-soundwire/tas2783.conf` (commit
   [`182d0122`](https://github.com/alsa-project/alsa-ucm-conf/commit/182d0122), 2026-08-21), after
@@ -155,7 +139,3 @@ there (boot without the override and run `sudo ./trace-px13-rt721-resume.sh`) be
 | `trace-px13-rt721-resume.sh` | forces one RT721 suspend/resume and traces every register write |
 | `90-px13-rt721-no-autosuspend.rules` | fallback: udev rule that keeps the RT721 out of runtime suspend |
 | `install-px13-rt721-rule.sh` | installs that rule |
-| `tas2783-patched/px13-tas2783-channel-mask.patch` | the tas2783 stereo backport (7.2) |
-| `tas2783-patched/Makefile` | kbuild file for the out-of-tree tas2783 module |
-| `build-px13-tas2783-module.sh` | fetches the tas2783 source for your kernel, patches, builds, signs |
-| `install-px13-tas2783-module.sh` | installs the tas2783 module into `updates/` |
