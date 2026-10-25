@@ -32,10 +32,10 @@ All steps ask for `sudo`.
 ### 1. UCM speaker profile
 
 ```bash
-./install-px13-ucm.sh
+sudo install -Dm644 tas2783.conf /usr/share/alsa/ucm2/sof-soundwire/tas2783.conf
+systemctl --user restart wireplumber
 ```
 
-Copies `tas2783.conf` to `/usr/share/alsa/ucm2/sof-soundwire/` and restarts WirePlumber.
 A "Speaker" sink should appear in `wpctl status`.
 
 ### 2. Signing key (Secure Boot only, once)
@@ -74,10 +74,16 @@ sudo ./trace-px13-rt721-resume.sh           # forces one suspend/resume and play
 The `aplay:` line must say `Playing raw data`, not `No data available`. If it fails, the codec stays
 dead until a reboot; `rt721-trace.txt` then shows the last register written before the failure.
 
-Fallback if you can't build modules: forbid runtime PM for the RT721 instead
-(`./install-px13-rt721-rule.sh && sudo reboot`). The codec then stays active; on this laptop the
-SoundWire link stays up for the amps anyway, so the cost looks small. Don't use both: the rule
-hides whether the module works.
+Fallback if you can't build modules: forbid runtime PM for the RT721 instead.
+
+```bash
+sudo install -m644 90-px13-rt721-no-autosuspend.rules /etc/udev/rules.d/
+sudo reboot
+```
+
+The codec then stays active; on this laptop the SoundWire link stays up for the amps anyway, so the
+cost looks small. Don't use both: the rule hides whether the module works. To undo it:
+`sudo rm /etc/udev/rules.d/90-px13-rt721-no-autosuspend.rules && sudo reboot`.
 
 ### 4. Check it works
 
@@ -131,11 +137,9 @@ there (boot without the override and run `sudo ./trace-px13-rt721-resume.sh`) be
 | File | Purpose |
 |---|---|
 | `tas2783.conf` | UCM speaker config |
-| `install-px13-ucm.sh` | installs it and restarts WirePlumber |
 | `rt721-patched/px13-rt721-sync-defaults.patch` | the RT721 register-defaults fix (7.3) |
 | `rt721-patched/Makefile` | kbuild file for the out-of-tree RT721 module |
 | `build-px13-rt721-module.sh` | fetches the RT721 driver source for your kernel, patches, builds, signs |
 | `install-px13-rt721-module.sh` | installs the RT721 module into `updates/` |
 | `trace-px13-rt721-resume.sh` | forces one RT721 suspend/resume and traces every register write |
 | `90-px13-rt721-no-autosuspend.rules` | fallback: udev rule that keeps the RT721 out of runtime suspend |
-| `install-px13-rt721-rule.sh` | installs that rule |
